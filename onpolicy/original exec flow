@@ -1,0 +1,9 @@
+train_smac:
+	- initilize arguments
+	- create environment
+	- create RUNNER:
+		- create 1 ACTOR CRITIC (wrapper)
+        - create 1 buffer
+        - start training
+	
+

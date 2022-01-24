@@ -1,0 +1,12 @@
+train_smac:
+	- initilize arguments (map: 3m)
+	- create environment
+	- create RUNNER:
+		- create 1 ACTOR CRITIC (wrapper)
+        - create 1 BUFFER 
+
+        - start training 
+
+
+	
+
