@@ -1,4 +1,4 @@
-train_smac:
+train_smac: CENTRALIZED
 	- initilize arguments (map: 3m)
 	- create environment
 	- create RUNNER:
@@ -6,7 +6,39 @@ train_smac:
         - create 1 BUFFER 
 
         - start training 
+            - for each eps:
+                - collect data (run policy network)
+                - run env (with collected actions)
+                - insert data to BUFFER
+                - compute returns()
+                - update network(train network)
+
+                -post process
 
 
-	
+train_smac: CENTRALIZED
+	- initilize arguments (map: 3m)
+	- create environment
+	- create RUNNER:
+		- create ACTOR CRITIC (wrapper) based on the number of units taken from map info
+        - create BUFFER based on the number of units
 
+        - start training 
+
+            - for each eps:
+            
+                - for each agent in agent_id:
+                    - collect individual data (run policy network of each agent)
+
+                - run env (with collected actions data)
+
+                - for each agent in agent_id:
+                    - insert individual data to corespond individual BUFFER
+                    - insert step data to each coresponding BUFFER
+                    - compute returns for each BUFFER
+                    - update individual network(train network)
+
+                -post process
+
+
+note: use share observations?
