@@ -40,5 +40,11 @@ train_smac: CENTRALIZED
 
                 -post process
 
+BUFFER(state, action, nextState, reward)
 
-note: use share observations?
+note: use share observations
+- seperate 
+- use original return(long term reward) 
+- check reward logic
+
+env.step: tell all env to take the action. Whats the point of multithreading??
