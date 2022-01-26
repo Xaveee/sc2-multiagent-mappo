@@ -26,7 +26,7 @@ class SMACRunner(Runner):
         last_battles_game = np.zeros(self.n_rollout_threads, dtype=np.float32)
         last_battles_won = np.zeros(self.n_rollout_threads, dtype=np.float32)
 
-        for episode in range(10):
+        for episode in range(episodes):
             if self.use_linear_lr_decay:
                 self.trainer.policy.lr_decay(episode, episodes)
 
@@ -128,24 +128,17 @@ class SMACRunner(Runner):
         self.trainer.prep_rollout()
         value, action, action_log_prob, rnn_state, rnn_state_critic\
             = self.trainer.policy.get_actions(np.concatenate(self.buffer.share_obs[step]),
-                                              np.concatenate(
-                self.buffer.obs[step]),
-                np.concatenate(
-                self.buffer.rnn_states[step]),
-                np.concatenate(
-                self.buffer.rnn_states_critic[step]),
-                np.concatenate(
-                self.buffer.masks[step]),
-                np.concatenate(self.buffer.available_actions[step]))
+                                              np.concatenate(self.buffer.obs[step]),
+                                              np.concatenate(self.buffer.rnn_states[step]),
+                                              np.concatenate(self.buffer.rnn_states_critic[step]),
+                                              np.concatenate(self.buffer.masks[step]),
+                                              np.concatenate(self.buffer.available_actions[step]))
         # [self.envs, agents, dim]
         values = np.array(np.split(_t2n(value), self.n_rollout_threads))
         actions = np.array(np.split(_t2n(action), self.n_rollout_threads))
-        action_log_probs = np.array(
-            np.split(_t2n(action_log_prob), self.n_rollout_threads))
-        rnn_states = np.array(
-            np.split(_t2n(rnn_state), self.n_rollout_threads))
-        rnn_states_critic = np.array(
-            np.split(_t2n(rnn_state_critic), self.n_rollout_threads))
+        action_log_probs = np.array(np.split(_t2n(action_log_prob), self.n_rollout_threads))
+        rnn_states = np.array( np.split(_t2n(rnn_state), self.n_rollout_threads))
+        rnn_states_critic = np.array(np.split(_t2n(rnn_state_critic), self.n_rollout_threads))
 
         return values, actions, action_log_probs, rnn_states, rnn_states_critic
 
