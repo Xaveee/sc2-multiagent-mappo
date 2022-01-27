@@ -56,6 +56,9 @@ def make_eval_env(all_args):
 
 
 def parse_args(args, parser):
+    """
+    "add" arguments are added to the share obs
+    """
     parser.add_argument('--map_name', type=str, default='3m',
                         help="Which smac map to run on")
     parser.add_argument("--add_move_state", action='store_true', default=False)

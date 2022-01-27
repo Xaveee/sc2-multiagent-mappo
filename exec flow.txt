@@ -43,8 +43,16 @@ train_smac: CENTRALIZED
 BUFFER(state, action, nextState, reward)
 
 note: use share observations
-- seperate 
+- each agent_id has a SEPARATED RUNNER, BUFFER (check to see if buffer needed to be rewrite for decentralize  training) 
+    FIND OUT WHAT NEED TO BE USED IN THE SEPARATED BUFFER
+    base_runner
+    smac_runner (REMEMBER to add lr_decay for each agent_id)
+- tune arguments for decentralized
+    share_policy
+    use_ventralizedV
 - use original return(long term reward) 
 - check reward logic
+
+- FIND OUT WHAT IS action_env
 
 env.step: tell all env to take the action. Whats the point of multithreading??

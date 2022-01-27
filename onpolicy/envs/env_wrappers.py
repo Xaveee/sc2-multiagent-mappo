@@ -300,7 +300,10 @@ class SubprocVecEnv(ShareVecEnv):
             return np.stack(frame)
 
 
-def shareworker(remote, parent_remote, env_fn_wrapper):
+def shareworker(remote, parent_remote, env_fn_wrapper): 
+    """
+    env: StarCraft2_Env
+    """
     parent_remote.close()
     env = env_fn_wrapper.x()
     while True:
