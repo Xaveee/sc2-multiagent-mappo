@@ -48,7 +48,6 @@ class Runner(object):
         self.model_dir = self.all_args.model_dir
 
         if self.use_render:
-            import imageio
             self.run_dir = config["run_dir"]
             self.gif_dir = str(self.run_dir / 'gifs')
             if not os.path.exists(self.gif_dir):
@@ -90,7 +89,6 @@ class Runner(object):
         for agent_id in range(self.num_agents):
             # algorithm
             tr = TrainAlgo(self.all_args, self.policy[agent_id], device = self.device)
-            self.trainer.append(tr)
             # buffer
             share_observation_space = self.envs.share_observation_space[agent_id] if self.use_centralized_V else self.envs.observation_space[agent_id]
             bu = SeparatedReplayBuffer(self.all_args,
@@ -98,6 +96,7 @@ class Runner(object):
                                        share_observation_space,
                                        self.envs.action_space[agent_id])
             self.buffer.append(bu)
+            self.trainer.append(tr)
             
     def run(self):
         raise NotImplementedError

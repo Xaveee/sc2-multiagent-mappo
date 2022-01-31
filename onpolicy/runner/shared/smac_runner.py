@@ -251,6 +251,6 @@ class SMACRunner(Runner):
                         "eval_win_rate", {"eval_win_rate": eval_win_rate}, total_num_steps)
                 break
 
-        print("saving eval replay")
-        self.eval_envs.qqq
-        print("saved")
+        # print("saving eval replay")
+        # self.eval_envs.qqq
+        # print("saved")

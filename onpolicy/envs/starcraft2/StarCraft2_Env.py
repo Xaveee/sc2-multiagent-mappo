@@ -562,7 +562,7 @@ class StarCraft2Env(MultiAgentEnv):
             terminated = True
             self.bad_transition = True
             if self.continuing_episode:
-                info["episode_limit"] = True
+                infos["episode_limit"] = True
             self.battles_game += 1
             self.timeouts += 1
 

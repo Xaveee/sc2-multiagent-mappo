@@ -344,7 +344,7 @@ def shareworker(remote, parent_remote, env_fn_wrapper):
             raise NotImplementedError
 
 
-class ShareSubprocVecEnv(ShareVecEnv):
+class ShareSubprocVecEnv(ShareVecEnv): #Starcraft
     def __init__(self, env_fns, spaces=None):
         """
         envs: list of gym environments to run in subprocesses
