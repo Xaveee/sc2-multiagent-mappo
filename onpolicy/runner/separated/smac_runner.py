@@ -125,22 +125,49 @@ class SMACRunner(Runner):
 
     @ torch.no_grad()
     def collect(self, step):
-        self.trainer.prep_rollout()
-        value, action, action_log_prob, rnn_state, rnn_state_critic\
-            = self.trainer.policy.get_actions(np.concatenate(self.buffer.share_obs[step]),
-                                              np.concatenate(self.buffer.obs[step]),
-                                              np.concatenate(self.buffer.rnn_states[step]),
-                                              np.concatenate(self.buffer.rnn_states_critic[step]),
-                                              np.concatenate(self.buffer.masks[step]),
-                                              np.concatenate(self.buffer.available_actions[step]))
+        values = []
+        actions = []
+        temp_actions_env = []
+        action_log_probs = []
+        rnn_states = []
+        rnn_states_critic = []
+        
+        for agent_id in range(self.num_agent):
+            self.trainer.prep_rollout()
+            value, action, action_log_prob, rnn_state, rnn_state_critic \
+                = self.trainer[agent_id].policy.get_actions(self.buffer[agent_id].share_obs[step],
+                                                            self.buffer[agent_id].obs[step],
+                                                            self.buffer[agent_id].rnn_states[step],
+                                                            self.buffer[agent_id].rnn_states_critic[step],
+                                                            self.buffer[agent_id].masks[step],
+                                                            self.buffer[agent_id].available_actions[step])
+            values.append(_t2n(value))
+            actions.append(_t2n(action))
+            action_log_probs.append(_t2n(action_log_prob))
+            rnn_states.append(_t2n(rnn_state))
+            rnn_states_critic.append( _t2n(rnn_state_critic))
         # [self.envs, agents, dim]
-        values              = np.array(np.split(_t2n(value), self.n_rollout_threads))
-        actions             = np.array(np.split(_t2n(action), self.n_rollout_threads))
-        action_log_probs    = np.array(np.split(_t2n(action_log_prob), self.n_rollout_threads))
-        rnn_states          = np.array(np.split(_t2n(rnn_state), self.n_rollout_threads))
-        rnn_states_critic   = np.array(np.split(_t2n(rnn_state_critic), self.n_rollout_threads))
+        
 
         return values, actions, action_log_probs, rnn_states, rnn_states_critic
+    # @ torch.no_grad()
+    # def collect(self, step):
+    #     self.trainer.prep_rollout()
+    #     value, action, action_log_prob, rnn_state, rnn_state_critic\
+    #         = self.trainer.policy.get_actions(np.concatenate(self.buffer.share_obs[step]),
+    #                                           np.concatenate(self.buffer.obs[step]),
+    #                                           np.concatenate(self.buffer.rnn_states[step]),
+    #                                           np.concatenate(self.buffer.rnn_states_critic[step]),
+    #                                           np.concatenate(self.buffer.masks[step]),
+    #                                           np.concatenate(self.buffer.available_actions[step]))
+    #     # [self.envs, agents, dim]
+    #     values              = np.array(np.split(_t2n(value), self.n_rollout_threads))
+    #     actions             = np.array(np.split(_t2n(action), self.n_rollout_threads))
+    #     action_log_probs    = np.array(np.split(_t2n(action_log_prob), self.n_rollout_threads))
+    #     rnn_states          = np.array(np.split(_t2n(rnn_state), self.n_rollout_threads))
+    #     rnn_states_critic   = np.array(np.split(_t2n(rnn_state_critic), self.n_rollout_threads))
+
+    #     return values, actions, action_log_probs, rnn_states, rnn_states_critic
 
     def insert(self, data):
         obs, share_obs, rewards, dones, infos, available_actions, \
@@ -153,10 +180,8 @@ class SMACRunner(Runner):
         rnn_states_critic[dones_env == True] = np.zeros(((dones_env == True).sum(
         ), self.num_agents, *self.buffer.rnn_states_critic.shape[3:]), dtype=np.float32)
 
-        masks = np.ones(
-            (self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
-        masks[dones_env == True] = np.zeros(
-            ((dones_env == True).sum(), self.num_agents, 1), dtype=np.float32)
+        masks = np.ones((self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
+        masks[dones_env == True] = np.zeros(((dones_env == True).sum(), self.num_agents, 1), dtype=np.float32)
 
         active_masks = np.ones(
             (self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
@@ -167,12 +192,53 @@ class SMACRunner(Runner):
 
         bad_masks = np.array([[[0.0] if info[agent_id]['bad_transition'] else [
                              1.0] for agent_id in range(self.num_agents)] for info in infos])
+        for agent_id in range(self.num_agent):
+            if not self.use_centralized_V:
+                share_obs = obs[agent_id]
 
-        if not self.use_centralized_V:
-            share_obs = obs
+            self.buffer[agent_id].insert(share_obs, 
+                                         obs[agent_id], 
+                                         rnn_states[agent_id], 
+                                         rnn_states_critic[agent_id],
+                                         actions[agent_id], 
+                                         action_log_probs[agent_id],
+                                         values[agent_id],
+                                         rewards,[agent_id]
+                                         masks[agent_id],
+                                         bad_masks[agent_id],
+                                         active_masks[agent_id],
+                                         available_actions[agent_id])
+    # def insert(self, data):
+    #     obs, share_obs, rewards, dones, infos, available_actions, \
+    #         values, actions, action_log_probs, rnn_states, rnn_states_critic = data
 
-        self.buffer.insert(share_obs, obs, rnn_states, rnn_states_critic,
-                           actions, action_log_probs, values, rewards, masks, bad_masks, active_masks, available_actions)
+    #     dones_env = np.all(dones, axis=1)
+
+    #     rnn_states[dones_env == True] = np.zeros(((dones_env == True).sum(
+    #     ), self.num_agents, self.recurrent_N, self.hidden_size), dtype=np.float32)
+    #     rnn_states_critic[dones_env == True] = np.zeros(((dones_env == True).sum(
+    #     ), self.num_agents, *self.buffer.rnn_states_critic.shape[3:]), dtype=np.float32)
+
+    #     masks = np.ones(
+    #         (self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
+    #     masks[dones_env == True] = np.zeros(
+    #         ((dones_env == True).sum(), self.num_agents, 1), dtype=np.float32)
+
+    #     active_masks = np.ones(
+    #         (self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
+    #     active_masks[dones == True] = np.zeros(
+    #         ((dones == True).sum(), 1), dtype=np.float32)
+    #     active_masks[dones_env == True] = np.ones(
+    #         ((dones_env == True).sum(), self.num_agents, 1), dtype=np.float32)
+
+    #     bad_masks = np.array([[[0.0] if info[agent_id]['bad_transition'] else [
+    #                          1.0] for agent_id in range(self.num_agents)] for info in infos])
+
+    #     if not self.use_centralized_V:
+    #         share_obs = obs
+
+    #     self.buffer.insert(share_obs, obs, rnn_states, rnn_states_critic,
+    #                        actions, action_log_probs, values, rewards, masks, bad_masks, active_masks, available_actions)
 
     def log_train(self, train_infos, total_num_steps):
         train_infos["average_step_rewards"] = np.mean(self.buffer.rewards)

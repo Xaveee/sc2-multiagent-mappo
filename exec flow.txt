@@ -53,6 +53,6 @@ note: use share observations
 - use original return(long term reward) 
 - check reward logic
 
-- FIND OUT WHAT IS action_env
+- FIND OUT WHAT IS action_env (MPE exclusive)
 
 env.step: tell all env to take the action. Whats the point of multithreading??
