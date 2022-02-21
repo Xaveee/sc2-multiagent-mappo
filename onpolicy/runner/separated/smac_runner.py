@@ -28,8 +28,9 @@ class SMACRunner(Runner):
         last_battles_won = np.zeros(self.n_rollout_threads, dtype=np.float32)
 
         for episode in range(episodes):
-            if self.use_linear_lr_decay:
-                self.trainer.policy.lr_decay(episode, episodes)
+            for unit_type in range(self.unit_type_bits):
+                if self.use_linear_lr_decay:
+                    self.trainer[unit_type].policy.lr_decay(episode, episodes)
 
             for step in range(self.episode_length):
                 # Sample actions
@@ -100,9 +101,9 @@ class SMACRunner(Runner):
                     last_battles_game = battles_game
                     last_battles_won = battles_won
 
-                for agent_id in range(self.num_agents):
-                    train_infos[agent_id].update(
-                        {'dead_ratio': 1 - self.buffer[agent_id].active_masks.sum() / reduce(lambda x, y: x*y, list(self.buffer[agent_id].active_masks.shape))})
+                for unit_type in range(self.unit_type_bits):
+                    train_infos[unit_type].update(
+                        {'dead_ratio': 1 - self.buffer[unit_type].active_masks.sum() / reduce(lambda x, y: x*y, list(self.buffer[unit_type].active_masks.shape))})
                 # train_infos['dead_ratio'] = 1 - self.buffer.active_masks.sum() / reduce(
                 #     lambda x, y: x*y, list(self.buffer.active_masks.shape))
 
@@ -118,7 +119,7 @@ class SMACRunner(Runner):
     def warmup(self):
         # reset env
         obs, share_obs, available_actions = self.envs.reset()
-
+        x = np.array(list(available_actions[:, 0])).copy()
         # replay buffer
         share_obs = []
         for o in obs:
@@ -151,15 +152,15 @@ class SMACRunner(Runner):
         rnn_states = []
         rnn_states_critic = []
         
-        for agent_id in range(self.num_agents):
-            self.trainer[agent_id].prep_rollout()
+        for unit_type in range(self.unit_type_bits):
+            self.trainer[unit_type].prep_rollout()
             value, action, action_log_prob, rnn_state, rnn_state_critic \
-                = self.trainer[agent_id].policy.get_actions(self.buffer[agent_id].share_obs[step],
-                                                            self.buffer[agent_id].obs[step],
-                                                            self.buffer[agent_id].rnn_states[step],
-                                                            self.buffer[agent_id].rnn_states_critic[step],
-                                                            self.buffer[agent_id].masks[step],
-                                                            self.buffer[agent_id].available_actions[step])
+                = self.trainer[unit_type].policy.get_actions(self.buffer[unit_type].share_obs[step],
+                                                            self.buffer[unit_type].obs[step],
+                                                            self.buffer[unit_type].rnn_states[step],
+                                                            self.buffer[unit_type].rnn_states_critic[step],
+                                                            self.buffer[unit_type].masks[step],
+                                                            self.buffer[unit_type].available_actions[step])
             values.append(_t2n(value))
             actions.append(_t2n(action))
             action_log_probs.append(_t2n(action_log_prob))

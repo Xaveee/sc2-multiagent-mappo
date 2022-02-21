@@ -73,3 +73,6 @@ for num_agent --> for num_types:
             - collect(transpose can be left as it is for now)
             - insert 
             - remake eval
+
+questions:
+    - 

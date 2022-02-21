@@ -151,12 +151,14 @@ def main(args):
     envs = make_train_env(all_args)
     eval_envs = make_eval_env(all_args) if all_args.use_eval else None
     num_agents = get_map_params(all_args.map_name)["n_agents"]
+    unit_type_bits = get_map_params(all_args.map_name)["unit_type_bits"]
 
     config = {
         "all_args": all_args,
         "envs": envs,
         "eval_envs": eval_envs,
         "num_agents": num_agents,
+        "unit_type_bits": unit_type_bits,
         "device": device,
         "run_dir": run_dir
     }

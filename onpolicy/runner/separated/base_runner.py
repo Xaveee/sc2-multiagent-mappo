@@ -21,6 +21,7 @@ class Runner(object):
         self.eval_envs = config['eval_envs']
         self.device = config['device']
         self.num_agents = config['num_agents']
+        self.unit_type_bits = config['unit_type_bits']
 
         # parameters
         self.env_name = self.all_args.env_name
@@ -71,13 +72,13 @@ class Runner(object):
 
 
         self.policy = []
-        for agent_id in range(self.num_agents):
-            share_observation_space = self.envs.share_observation_space[agent_id] if self.use_centralized_V else self.envs.observation_space[agent_id]
+        for _ in range(self.unit_type_bits):
+            share_observation_space = self.envs.share_observation_space[0] if self.use_centralized_V else self.envs.observation_space[0]
             # policy network
             po = Policy(self.all_args,
-                        self.envs.observation_space[agent_id],
+                        self.envs.observation_space[0],
                         share_observation_space,
-                        self.envs.action_space[agent_id],
+                        self.envs.action_space[0],
                         device = self.device)
             self.policy.append(po)
 
@@ -86,15 +87,15 @@ class Runner(object):
 
         self.trainer = []
         self.buffer = []
-        for agent_id in range(self.num_agents):
+        for unit_type in range(self.unit_type_bits):
             # algorithm
-            tr = TrainAlgo(self.all_args, self.policy[agent_id], device = self.device)
+            tr = TrainAlgo(self.all_args, self.policy[unit_type], device = self.device)
             # buffer
-            share_observation_space = self.envs.share_observation_space[agent_id] if self.use_centralized_V else self.envs.observation_space[agent_id]
+            share_observation_space = self.envs.share_observation_space[0] if self.use_centralized_V else self.envs.observation_space[0]
             bu = SeparatedReplayBuffer(self.all_args,
-                                       self.envs.observation_space[agent_id],
+                                       self.envs.observation_space[0],
                                        share_observation_space,
-                                       self.envs.action_space[agent_id])
+                                       self.envs.action_space[0])
             self.buffer.append(bu)
             self.trainer.append(tr)
             
@@ -112,42 +113,42 @@ class Runner(object):
     
     @torch.no_grad()
     def compute(self):
-        for agent_id in range(self.num_agents):
-            self.trainer[agent_id].prep_rollout()
-            next_value = self.trainer[agent_id].policy.get_values(self.buffer[agent_id].share_obs[-1], 
-                                                                self.buffer[agent_id].rnn_states_critic[-1],
-                                                                self.buffer[agent_id].masks[-1])
+        for unit_type in range(self.unit_type_bits):
+            self.trainer[unit_type].prep_rollout()
+            next_value = self.trainer[unit_type].policy.get_values(self.buffer[unit_type].share_obs[-1], 
+                                                                self.buffer[unit_type].rnn_states_critic[-1],
+                                                                self.buffer[unit_type].masks[-1])
             next_value = _t2n(next_value)
-            self.buffer[agent_id].compute_returns(next_value, self.trainer[agent_id].value_normalizer)
+            self.buffer[unit_type].compute_returns(next_value, self.trainer[unit_type].value_normalizer)
 
     def train(self):
         train_infos = []
-        for agent_id in range(self.num_agents):
-            self.trainer[agent_id].prep_training()
-            train_info = self.trainer[agent_id].train(self.buffer[agent_id])
+        for unit_type in range(self.unit_type_bits):
+            self.trainer[unit_type].prep_training()
+            train_info = self.trainer[unit_type].train(self.buffer[unit_type])
             train_infos.append(train_info)       
-            self.buffer[agent_id].after_update()
+            self.buffer[unit_type].after_update()
 
         return train_infos
 
     def save(self):
-        for agent_id in range(self.num_agents):
-            policy_actor = self.trainer[agent_id].policy.actor
-            torch.save(policy_actor.state_dict(), str(self.save_dir) + "/actor_agent" + str(agent_id) + ".pt")
-            policy_critic = self.trainer[agent_id].policy.critic
-            torch.save(policy_critic.state_dict(), str(self.save_dir) + "/critic_agent" + str(agent_id) + ".pt")
+        for unit_type in range(self.unit_type_bits):
+            policy_actor = self.trainer[unit_type].policy.actor
+            torch.save(policy_actor.state_dict(), str(self.save_dir) + "/actor_agent" + str(unit_type) + ".pt")
+            policy_critic = self.trainer[unit_type].policy.critic
+            torch.save(policy_critic.state_dict(), str(self.save_dir) + "/critic_agent" + str(unit_type) + ".pt")
 
     def restore(self):
-        for agent_id in range(self.num_agents):
-            policy_actor_state_dict = torch.load(str(self.model_dir) + '/actor_agent' + str(agent_id) + '.pt')
-            self.policy[agent_id].actor.load_state_dict(policy_actor_state_dict)
-            policy_critic_state_dict = torch.load(str(self.model_dir) + '/critic_agent' + str(agent_id) + '.pt')
-            self.policy[agent_id].critic.load_state_dict(policy_critic_state_dict)
+        for unit_type in range(self.unit_type_bits):
+            policy_actor_state_dict = torch.load(str(self.model_dir) + '/actor_agent' + str(unit_type) + '.pt')
+            self.policy[unit_type].actor.load_state_dict(policy_actor_state_dict)
+            policy_critic_state_dict = torch.load(str(self.model_dir) + '/critic_agent' + str(unit_type) + '.pt')
+            self.policy[unit_type].critic.load_state_dict(policy_critic_state_dict)
 
     def log_train(self, train_infos, total_num_steps): 
-        for agent_id in range(self.num_agents):
-            for k, v in train_infos[agent_id].items():
-                agent_k = "agent%i/" % agent_id + k
+        for unit_type in range(self.unit_type_bits):
+            for k, v in train_infos[unit_type].items():
+                agent_k = "agent%i/" % unit_type + k
                 if self.use_wandb:
                     wandb.log({agent_k: v}, step=total_num_steps)
                 else:
