@@ -16,7 +16,7 @@ train_smac: CENTRALIZED
                 -post process
 
 
-train_smac: CENTRALIZED
+train_smac: Decentrailized
 	- initilize arguments (map: 3m)
 	- create environment
 	- create RUNNER:
@@ -54,3 +54,22 @@ BUFFER(state, action, nextState, reward)
 
 change eval 
 problems with multithreading
+
+
+-----------------------------------
+
+include type info for every map (MMM: 1, 2, 7) 
+https://github.com/oxwhirl/smac/blob/master/docs/smac.md
+
+for num_agent --> for num_types:
+    base_runnner:
+        - policy, trainer, BUFFER
+        - function: compute , train, save, restore, log_train
+    smac_runner:
+        line 31: each trainer's lr need decay
+        line 62: log info
+        function: 
+            - warmup
+            - collect(transpose can be left as it is for now)
+            - insert 
+            - remake eval
