@@ -180,10 +180,10 @@ class SMACRunner(Runner):
             rnn_states_critic.append( _t2n(rnn_state_critic))
         # [self.envs, agents, dim]
         values = np.concatenate(values, axis=1)
-        actions = np.concatenate(values, axis=1)
-        action_log_probs = np.concatenate(values, axis=1)
-        rnn_states = np.concatenate(values, axis=1)
-        rnn_states_critic = np.concatenate(values, axis=1)
+        actions = np.concatenate(actions, axis=1)
+        action_log_probs = np.concatenate(action_log_probs, axis=1)
+        rnn_states = np.concatenate(rnn_states, axis=1)
+        rnn_states_critic = np.concatenate(rnn_states_critic, axis=1)
 
         return values, actions, action_log_probs, rnn_states, rnn_states_critic
     # @ torch.no_grad()
