@@ -263,7 +263,7 @@ class SMACRunner(Runner):
                                     _rnn_states[:, :count], 
                                     _rnn_states_critic[:, :count],
                                     _actions[:, :count], 
-                                    _action_log_probs[:, :count],
+                                    _action_log_probs[:, bit],
                                     _values[:, :count],
                                     _rewards[:, :count],
                                     _masks[:, :count],
@@ -275,7 +275,7 @@ class SMACRunner(Runner):
             _rnn_states = _rnn_states[:, count:]
             _rnn_states_critic = _rnn_states_critic[:, count:]
             _actions = _actions[:, count:]
-            _action_log_probs = _action_log_probs[:, count:]
+            # _action_log_probs = _action_log_probs[:, count:]
             _values = _values[:, count:]
             _rewards = _rewards[:, count:]
             _masks = _masks[:, count:]

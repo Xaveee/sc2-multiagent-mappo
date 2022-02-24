@@ -66,7 +66,7 @@ class SharedReplayBuffer(object):
         self.actions = np.zeros(
             (self.episode_length, self.n_rollout_threads, num_agents, act_shape), dtype=np.float32)
         self.action_log_probs = np.zeros(
-            (self.episode_length, self.n_rollout_threads, num_agents, act_shape), dtype=np.float32)
+            (self.episode_length, self.n_rollout_threads, act_shape), dtype=np.float32)
         self.rewards = np.zeros(
             (self.episode_length, self.n_rollout_threads, num_agents, 1), dtype=np.float32)
 
