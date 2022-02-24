@@ -3,6 +3,7 @@ import wandb
 import numpy as np
 from functools import reduce
 from itertools import chain
+from collections import Counter
 import torch
 from onpolicy.runner.separated.base_runner import Runner
 
@@ -26,6 +27,10 @@ class SMACRunner(Runner):
 
         last_battles_game = np.zeros(self.n_rollout_threads, dtype=np.float32)
         last_battles_won = np.zeros(self.n_rollout_threads, dtype=np.float32)
+
+        agents = [self.envs.get_unit_by_id(agent) for agent in range(self.num_agents)]
+        unit_types = [self.get_unit_type_id(agent, True) for agent in agents]
+        type_count = Counter(unit_types).values()
 
         for episode in range(episodes):
             for unit_type in range(self.unit_type_bits):
@@ -119,19 +124,31 @@ class SMACRunner(Runner):
     def warmup(self):
         # reset env
         obs, share_obs, available_actions = self.envs.reset()
-        x = np.array(list(available_actions[:, 0])).copy()
         # replay buffer
         share_obs = []
         for o in obs:
             share_obs.append(list(chain(*o)))
         share_obs = np.array(share_obs)    
 
-        for agent_id in range(self.num_agents):
-            if not self.use_centralized_V:
-                share_obs = np.array(list(obs[:, agent_id]))
-            self.buffer[agent_id].share_obs[0] = share_obs.copy()
-            self.buffer[agent_id].obs[0] = np.array(list(obs[:, agent_id])).copy()
-            self.buffer[agent_id].available_actions[0] = np.array(list(available_actions[:, agent_id])).copy()
+        # for agent_id in range(self.num_agents):
+        #     if not self.use_centralized_V:
+        #         share_obs = np.array(list(obs[:, agent_id]))
+        #     self.buffer[agent_id].share_obs[0] = share_obs.copy()
+        #     self.buffer[agent_id].obs[0] = np.array(list(obs[:, agent_id])).copy()
+        #     self.buffer[agent_id].available_actions[0] = np.array(list(available_actions[:, agent_id])).copy()
+
+        _obs = obs.copy()
+        _available_action = available_actions.copy()
+
+        for count in type_count:
+            bit = 0
+            self.buffer[bit].share_obs[0] = np.array(list(_obs[:, :count]))
+            self.buffer[bit].obs[0] = np.array(list(_obs[:, :count]))
+            self.buffer[bit].available_actions[0] = np.array(list(_available_action[:, :count]))
+
+            _obs = np.array(list(_obs[:, count:]))
+            _available_action = np.array(list(_available_action[:, count:]))
+            bit += 1
     # def warmup(self):
     #     # reset env
     #     obs, share_obs, available_actions = self.envs.reset()
@@ -215,22 +232,64 @@ class SMACRunner(Runner):
 
         bad_masks = np.array([[[0.0] if info[agent_id]['bad_transition'] else [
                              1.0] for agent_id in range(self.num_agents)] for info in infos])
-        for agent_id in range(self.num_agents):
-            if not self.use_centralized_V:
-                share_obs = np.array(list(obs[:, agent_id]))
+        # for agent_id in range(self.num_agents):
+        #     if not self.use_centralized_V:
+        #         share_obs = np.array(list(obs[:, agent_id]))
 
-            self.buffer[agent_id].insert(share_obs, 
-                                         np.array(list(obs[:, agent_id])), 
-                                         rnn_states[:, agent_id], 
-                                         rnn_states_critic[:, agent_id],
-                                         actions[:, agent_id], 
-                                         action_log_probs[:, agent_id],
-                                         values[:, agent_id],
-                                         rewards[:, agent_id],
-                                         masks[:, agent_id],
-                                         bad_masks[:, agent_id],
-                                         active_masks[:, agent_id],
-                                         available_actions[:, agent_id])
+        #     self.buffer[agent_id].insert(share_obs, 
+        #                                  np.array(list(obs[:, agent_id])), 
+        #                                  rnn_states[:, agent_id], 
+        #                                  rnn_states_critic[:, agent_id],
+        #                                  actions[:, agent_id], 
+        #                                  action_log_probs[:, agent_id],
+        #                                  values[:, agent_id],
+        #                                  rewards[:, agent_id],
+        #                                  masks[:, agent_id],
+        #                                  bad_masks[:, agent_id],
+        #                                  active_masks[:, agent_id],
+        #                                  available_actions[:, agent_id])
+
+        _obs = obs.copy()
+        _rnn_states = rnn_states.copy()
+        _rnn_states_critic = rnn_states_critic.copy()
+        _actions = actions.copy()
+        _action_log_probs = action_log_probs.copy()
+        _values = values.copy()
+        _rewards = rewards.copy()
+        _masks = masks.copy()
+        _bad_masks = bad_masks.copy()
+        _active_masks = active_masks.copy()
+        _available_action = available_actions.copy()
+
+        for count in type_count:
+            bit = 0
+            self.buffer[bit].insert(np.array(list(_obs[:, :count])), 
+                                    np.array(list(_obs[:, :count])), 
+                                    _rnn_states[:, :count], 
+                                    _rnn_states_critic[:, :count],
+                                    _actions[:, :count], 
+                                    _action_log_probs[:, :count],
+                                    _values[:, :count],
+                                    _rewards[:, :count],
+                                    _masks[:, :count],
+                                    _bad_masks[:, :count],
+                                    _active_masks[:, :count],
+                                    _available_actions[:, :count])
+
+            _obs = np.array(list(obs[:, count:]))
+            _rnn_states = _rnn_states[:, count:]
+            _rnn_states_critic = _rnn_states_critic[:, count:]
+            _actions = _actions[:, count:]
+            _action_log_probs = _action_log_probs[:, count:]
+            _values = _values[:, count:]
+            _rewards = _rewards[:, count:]
+            _masks = _masks[:, count:]
+            _bad_masks = _bad_masks[:, count:]
+            _active_masks = _active_masks[:, count:]
+            _available_action = _available_actions[:, count:]
+
+            bit += 1
+
     # def insert(self, data):
     #     obs, share_obs, rewards, dones, infos, available_actions, \
     #         values, actions, action_log_probs, rnn_states, rnn_states_critic = data
