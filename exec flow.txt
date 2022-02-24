@@ -63,15 +63,15 @@ https://github.com/oxwhirl/smac/blob/master/docs/smac.md
 
 for num_agent --> for num_types:
     base_runnner:
-        - policy, trainer, BUFFER
-        - function: compute , train, save, restore, log_train
+        - policy, trainer, BUFFER   (DONE)
+        - function: compute , train, save, restore, log_train   (DONE)
     smac_runner:
-        line 31: each trainer's lr need decay
-        line 62: log info
+        line 31: each trainer's lr need decay   (DONE)
+        line 62: log info (DONE)
         function: 
-            - warmup
-            - collect(transpose can be left as it is for now)
-            - insert 
+            - warmup (DONE)
+            - collect(transpose can be left as it is for now) (DONE)
+            - insert (DONE)
             - remake eval
 
 questions:

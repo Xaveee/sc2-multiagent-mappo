@@ -24,7 +24,7 @@
 #     MMM2
 #     so many baneling
 env="StarCraft2"
-map="3m"
+map="3s5z_vs_3s6z"
 algo="mappo"
 exp="mlp"
 user_name="xavee"

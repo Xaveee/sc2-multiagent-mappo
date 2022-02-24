@@ -725,7 +725,7 @@ class ShareDummyVecEnv(ShareVecEnv):
 
     def step_wait(self):
         results = [env.step(a) for (a, env) in zip(self.actions, self.envs)]
-        obs, share_obs, rews, dones, infos, available_actions, unit_types = map(
+        obs, share_obs, rews, dones, infos, available_actions = map(
             np.array, zip(*results))
 
         for (i, done) in enumerate(dones):
@@ -737,7 +737,7 @@ class ShareDummyVecEnv(ShareVecEnv):
                     obs[i], share_obs[i], available_actions[i] = self.envs[i].reset()
         self.actions = None
 
-        return obs, share_obs, rews, dones, infos, available_actions, unit_types
+        return obs, share_obs, rews, dones, infos, available_actions
 
     def reset(self):
         results = [env.reset() for env in self.envs]

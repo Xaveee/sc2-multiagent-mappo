@@ -3,7 +3,6 @@ import wandb
 import numpy as np
 from functools import reduce
 from itertools import chain
-from collections import Counter
 import torch
 from onpolicy.runner.separated.base_runner import Runner
 
@@ -27,10 +26,6 @@ class SMACRunner(Runner):
 
         last_battles_game = np.zeros(self.n_rollout_threads, dtype=np.float32)
         last_battles_won = np.zeros(self.n_rollout_threads, dtype=np.float32)
-
-        agents = [self.envs.get_unit_by_id(agent) for agent in range(self.num_agents)]
-        unit_types = [self.get_unit_type_id(agent, True) for agent in agents]
-        type_count = Counter(unit_types).values()
 
         for episode in range(episodes):
             for unit_type in range(self.unit_type_bits):
@@ -140,8 +135,8 @@ class SMACRunner(Runner):
         _obs = obs.copy()
         _available_action = available_actions.copy()
 
-        for count in type_count:
-            bit = 0
+        bit = 0
+        for count in self.type_count:
             self.buffer[bit].share_obs[0] = np.array(list(_obs[:, :count]))
             self.buffer[bit].obs[0] = np.array(list(_obs[:, :count]))
             self.buffer[bit].available_actions[0] = np.array(list(_available_action[:, :count]))
@@ -184,11 +179,11 @@ class SMACRunner(Runner):
             rnn_states.append(_t2n(rnn_state))
             rnn_states_critic.append( _t2n(rnn_state_critic))
         # [self.envs, agents, dim]
-        values = np.array(values).transpose(1, 0, 2)
-        actions = np.array(actions).transpose(1, 0, 2)
-        action_log_probs = np.array(action_log_probs).transpose(1, 0, 2)
-        rnn_states = np.array(rnn_states).transpose(1, 0, 2, 3)
-        rnn_states_critic = np.array(rnn_states_critic).transpose(1, 0, 2, 3)
+        values = np.concatenate(values, axis=1)
+        actions = np.concatenate(values, axis=1)
+        action_log_probs = np.concatenate(values, axis=1)
+        rnn_states = np.concatenate(values, axis=1)
+        rnn_states_critic = np.concatenate(values, axis=1)
 
         return values, actions, action_log_probs, rnn_states, rnn_states_critic
     # @ torch.no_grad()
@@ -259,10 +254,10 @@ class SMACRunner(Runner):
         _masks = masks.copy()
         _bad_masks = bad_masks.copy()
         _active_masks = active_masks.copy()
-        _available_action = available_actions.copy()
+        _available_actions = available_actions.copy()
 
-        for count in type_count:
-            bit = 0
+        bit = 0
+        for count in self.type_count:
             self.buffer[bit].insert(np.array(list(_obs[:, :count])), 
                                     np.array(list(_obs[:, :count])), 
                                     _rnn_states[:, :count], 
@@ -286,7 +281,7 @@ class SMACRunner(Runner):
             _masks = _masks[:, count:]
             _bad_masks = _bad_masks[:, count:]
             _active_masks = _active_masks[:, count:]
-            _available_action = _available_actions[:, count:]
+            _available_actions = _available_actions[:, count:]
 
             bit += 1
 

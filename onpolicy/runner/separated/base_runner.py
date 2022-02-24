@@ -4,10 +4,12 @@ import wandb
 import os
 import numpy as np
 from itertools import chain
+from collections import Counter
 import torch
 from tensorboardX import SummaryWriter
 
 from onpolicy.utils.separated_buffer import SeparatedReplayBuffer
+from onpolicy.utils.shared_buffer import SharedReplayBuffer
 from onpolicy.utils.util import update_linear_schedule
 
 def _t2n(x):
@@ -22,6 +24,10 @@ class Runner(object):
         self.device = config['device']
         self.num_agents = config['num_agents']
         self.unit_type_bits = config['unit_type_bits']
+        # agents = [self.envs.get_unit_by_id(agent) for agent in range(self.num_agents)]
+        # unit_types = [self.get_unit_type_id(agent, True) for agent in agents]
+        unit_types = [0, 0, 0, 1, 1, 1, 1, 1]
+        self.type_count = list(Counter(unit_types).values())
 
         # parameters
         self.env_name = self.all_args.env_name
@@ -92,10 +98,11 @@ class Runner(object):
             tr = TrainAlgo(self.all_args, self.policy[unit_type], device = self.device)
             # buffer
             share_observation_space = self.envs.share_observation_space[0] if self.use_centralized_V else self.envs.observation_space[0]
-            bu = SeparatedReplayBuffer(self.all_args,
-                                       self.envs.observation_space[0],
-                                       share_observation_space,
-                                       self.envs.action_space[0])
+            bu = SharedReplayBuffer(self.all_args,
+                                    self.type_count[unit_type],
+                                    self.envs.observation_space[0],
+                                    share_observation_space,
+                                    self.envs.action_space[0])
             self.buffer.append(bu)
             self.trainer.append(tr)
             

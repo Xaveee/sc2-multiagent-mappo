@@ -612,10 +612,10 @@ class StarCraft2Env(MultiAgentEnv):
             local_obs = self.stacked_local_obs.reshape(self.n_agents, -1)
             global_state = self.stacked_global_state.reshape(self.n_agents, -1)
             
-        agents = [self.get_unit_by_id(agent) for agent in range(self.n_agents)]
-        unit_types = [self.get_unit_type_id(agent, True) for agent in agents]
+        # agents = [self.get_unit_by_id(agent) for agent in range(self.n_agents)]
+        # unit_types = [self.get_unit_type_id(agent, True) for agent in agents]
 
-        return local_obs, global_state, rewards, dones, infos, available_actions, unit_types
+        return local_obs, global_state, rewards, dones, infos, available_actions
 
     def get_agent_action(self, a_id, action):
         """Construct the action for agent a_id."""
