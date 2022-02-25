@@ -231,7 +231,7 @@ class SharedReplayBuffer(object):
         :param mini_batch_size: (int) number of samples in each minibatch.
         """
         episode_length, n_rollout_threads, num_agents = self.rewards.shape[0:3]
-        batch_size = n_rollout_threads * episode_length * num_agents
+        batch_size = n_rollout_threads * episode_length
 
         if mini_batch_size is None:
             assert batch_size >= num_mini_batch, (

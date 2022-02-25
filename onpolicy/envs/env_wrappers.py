@@ -309,7 +309,7 @@ def shareworker(remote, parent_remote, env_fn_wrapper):
     while True:
         cmd, data = remote.recv()
         if cmd == 'step':
-            ob, s_ob, reward, done, info, available_actions, unit_types = env.step(data)
+            ob, s_ob, reward, done, info, available_actions = env.step(data)
             if 'bool' in done.__class__.__name__:
                 if done:
                     ob, s_ob, available_actions = env.reset()
@@ -317,7 +317,7 @@ def shareworker(remote, parent_remote, env_fn_wrapper):
                 if np.all(done):
                     ob, s_ob, available_actions = env.reset()
 
-            remote.send((ob, s_ob, reward, done, info, available_actions, unit_types))
+            remote.send((ob, s_ob, reward, done, info, available_actions))
         elif cmd == 'reset':
             ob, s_ob, available_actions = env.reset()
             remote.send((ob, s_ob, available_actions))
@@ -374,8 +374,8 @@ class ShareSubprocVecEnv(ShareVecEnv): #Starcraft
     def step_wait(self):
         results = [remote.recv() for remote in self.remotes]
         self.waiting = False
-        obs, share_obs, rews, dones, infos, available_actions, unit_types = zip(*results)
-        return np.stack(obs), np.stack(share_obs), np.stack(rews), np.stack(dones), infos, np.stack(available_actions), np.stack(unit_types)
+        obs, share_obs, rews, dones, infos, available_actions = zip(*results)
+        return np.stack(obs), np.stack(share_obs), np.stack(rews), np.stack(dones), infos, np.stack(available_actions)
 
     def reset(self):
         for remote in self.remotes:
