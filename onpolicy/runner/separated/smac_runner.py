@@ -181,7 +181,7 @@ class SMACRunner(Runner):
         # [self.envs, agents, dim]
         values = np.concatenate(values, axis=1)
         actions = np.concatenate(actions, axis=1)
-        action_log_probs = np.concatenate(action_log_probs, axis=1)
+        action_log_probs = np.array(action_log_probs).transpose(1, 0, 2)
         rnn_states = np.concatenate(rnn_states, axis=1)
         rnn_states_critic = np.concatenate(rnn_states_critic, axis=1)
 
