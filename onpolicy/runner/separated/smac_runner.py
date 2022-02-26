@@ -120,10 +120,10 @@ class SMACRunner(Runner):
         # reset env
         obs, share_obs, available_actions = self.envs.reset()
         # replay buffer
-        share_obs = []
-        for o in obs:
-            share_obs.append(list(chain(*o)))
-        share_obs = np.array(share_obs)    
+        # share_obs = []
+        # for o in obs:
+        #     share_obs.append(list(chain(*o)))
+        # share_obs = np.array(share_obs)    
 
         # for agent_id in range(self.num_agents):
         #     if not self.use_centralized_V:
@@ -133,15 +133,17 @@ class SMACRunner(Runner):
         #     self.buffer[agent_id].available_actions[0] = np.array(list(available_actions[:, agent_id])).copy()
 
         _obs = obs.copy()
+        _share_obs = share_obs.copy()
         _available_action = available_actions.copy()
 
         bit = 0
         for count in self.type_count:
-            self.buffer[bit].share_obs[0] = np.array(list(_obs[:, :count]))
+            self.buffer[bit].share_obs[0] = np.array(list(_share_obs[:, :count]))
             self.buffer[bit].obs[0] = np.array(list(_obs[:, :count]))
             self.buffer[bit].available_actions[0] = np.array(list(_available_action[:, :count]))
 
             _obs = np.array(list(_obs[:, count:]))
+            _share_obs = np.array(list(_share_obs[:, count:]))
             _available_action = np.array(list(_available_action[:, count:]))
             bit += 1
     # def warmup(self):
@@ -245,6 +247,7 @@ class SMACRunner(Runner):
         #                                  available_actions[:, agent_id])
 
         _obs = obs.copy()
+        _share_obs = share_obs.copy()
         _rnn_states = rnn_states.copy()
         _rnn_states_critic = rnn_states_critic.copy()
         _actions = actions.copy()
@@ -258,7 +261,7 @@ class SMACRunner(Runner):
 
         bit = 0
         for count in self.type_count:
-            self.buffer[bit].insert(np.array(list(_obs[:, :count])), 
+            self.buffer[bit].insert(np.array(list(_share_obs[:, :count])), 
                                     np.array(list(_obs[:, :count])), 
                                     _rnn_states[:, :count], 
                                     _rnn_states_critic[:, :count],
@@ -271,7 +274,8 @@ class SMACRunner(Runner):
                                     _active_masks[:, :count],
                                     _available_actions[:, :count])
 
-            _obs = np.array(list(obs[:, count:]))
+            _share_obs = np.array(list(_share_obs[:, count:]))
+            _obs = np.array(list(_obs[:, count:]))
             _rnn_states = _rnn_states[:, count:]
             _rnn_states_critic = _rnn_states_critic[:, count:]
             _actions = _actions[:, count:]
