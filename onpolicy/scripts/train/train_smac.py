@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from datetime import date
 import sys
 import os
 import wandb
@@ -19,7 +20,9 @@ def make_train_env(all_args):
     def get_env_fn(rank):
         def init_env():
             if all_args.env_name == "StarCraft2":
-                env = StarCraft2Env(all_args)
+                replay_dir = '/home/huy/code/sc2-multiagent-mappo/replays'
+                replay_prefix = all_args.map_name + '_' + date.today().strftime('%y_%m_%d')
+                env = StarCraft2Env(all_args, replay_dir=replay_dir, replay_prefix=replay_prefix)
             else:
                 print("Can not support the " +
                       all_args.env_name + "environment.")
@@ -39,7 +42,9 @@ def make_eval_env(all_args):
     def get_env_fn(rank):
         def init_env():
             if all_args.env_name == "StarCraft2":
-                env = StarCraft2Env(all_args)
+                replay_dir = '/home/huy/code/sc2-multiagent-mappo/replays'
+                replay_prefix = all_args.map_name + '_' + date.today().strftime('%y_%m_%d')
+                env = StarCraft2Env(all_args, replay_dir=replay_dir, replay_prefix=replay_prefix)
             else:
                 print("Can not support the " +
                       all_args.env_name + "environment.")

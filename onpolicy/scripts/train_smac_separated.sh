@@ -26,10 +26,10 @@
 env="StarCraft2"
 map="3s5z"
 algo="mappo"
-exp="multitype_run_3_noeval"
+exp="multitype_run_4"
 user_name="xavee"
 seed_max=1
-n_rollout_threads=25
+n_rollout_threads=20
 
 echo "env is ${env}, map is ${map}, algo is ${algo}, exp is ${exp}, max seed is ${seed_max}"
 for seed in `seq ${seed_max}`;
