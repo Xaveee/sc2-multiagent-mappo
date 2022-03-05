@@ -38,6 +38,7 @@ class SMACRunner(Runner):
                     step)
 
                 # Obser reward and next obs
+                # print(actions.shape)
                 obs, share_obs, rewards, dones, infos, available_actions = self.envs.step(
                     actions)
 
@@ -74,14 +75,20 @@ class SMACRunner(Runner):
 
                 if self.env_name == "StarCraft2":
                     battles_won = []
+                    battles_draw = []
                     battles_game = []
                     incre_battles_won = []
+                    incre_battles_draw = []
                     incre_battles_game = []
 
                     for i, info in enumerate(infos):
                         if 'battles_won' in info[0].keys():
                             battles_won.append(info[0]['battles_won'])
                             incre_battles_won.append(
+                                info[0]['battles_won']-last_battles_won[i])
+                        if 'battles_draw' in info[0].keys():
+                            battles_draw.append(info[0]['battles_draw'])
+                            incre_battles_draw.append(
                                 info[0]['battles_won']-last_battles_won[i])
                         if 'battles_game' in info[0].keys():
                             battles_game.append(info[0]['battles_game'])
@@ -90,13 +97,19 @@ class SMACRunner(Runner):
 
                     incre_win_rate = np.sum(
                         incre_battles_won)/np.sum(incre_battles_game) if np.sum(incre_battles_game) > 0 else 0.0
+                    incre_draw_rate = np.sum(
+                        incre_battles_draw)/np.sum(incre_battles_game) if np.sum(incre_battles_game) > 0 else 0.0
                     print("incre win rate is {}.".format(incre_win_rate))
                     if self.use_wandb:
                         wandb.log({"incre_win_rate": incre_win_rate},
                                   step=total_num_steps)
+                        wandb.log({"incre_draw_rate": incre_win_rate},
+                                  step=total_num_steps)
                     else:
                         self.writter.add_scalars(
                             "incre_win_rate", {"incre_win_rate": incre_win_rate}, total_num_steps)
+                        self.writter.add_scalars(
+                            "incre_draw_rate", {"incre_draw_rate": incre_draw_rate}, total_num_steps)
 
                     last_battles_game = battles_game
                     last_battles_won = battles_won
@@ -118,20 +131,24 @@ class SMACRunner(Runner):
         # reset env
         obs, share_obs, available_actions = self.envs.reset()
 
-        _obs = obs.copy()
-        _share_obs = share_obs.copy()
-        _available_action = available_actions.copy()
+        # _obs = obs.copy()
+        # _share_obs = share_obs.copy()
+        # _available_action = available_actions.copy()
 
+        if not self.use_centralized_V:
+            share_obs = obs
+            
+        
         bit = 0
         for count in self.type_count:
-            self.buffer[bit].share_obs[0] = np.array(list(_share_obs[:, :count]))
-            self.buffer[bit].obs[0] = np.array(list(_obs[:, :count]))
-            self.buffer[bit].available_actions[0] = np.array(list(_available_action[:, :count]))
+            self.buffer[bit].share_obs[0] = share_obs[:, :count]
+            self.buffer[bit].obs[0] = obs[:, :count]
+            self.buffer[bit].available_actions[0] = available_actions[:, :count]
             bit += 1
 
-            _obs = np.array(list(_obs[:, count:]))
-            _share_obs = np.array(list(_share_obs[:, count:]))
-            _available_action = np.array(list(_available_action[:, count:]))
+            obs = obs[:, count:]
+            share_obs = share_obs[:, count:]
+            available_actions = available_actions[:, count:]
 
     @ torch.no_grad()
     def collect(self, step):
@@ -139,30 +156,36 @@ class SMACRunner(Runner):
         actions = []
         action_log_probs = []
         rnn_states = []
-        rnn_states_critic = []
+        rnn_states_critics = []
         
         for unit_type in range(self.unit_type_bits):
             self.trainer[unit_type].prep_rollout()
             value, action, action_log_prob, rnn_state, rnn_state_critic \
-                = self.trainer[unit_type].policy.get_actions(self.buffer[unit_type].share_obs[step],
-                                                            self.buffer[unit_type].obs[step],
-                                                            self.buffer[unit_type].rnn_states[step],
-                                                            self.buffer[unit_type].rnn_states_critic[step],
-                                                            self.buffer[unit_type].masks[step],
-                                                            self.buffer[unit_type].available_actions[step])
+                = self.trainer[unit_type].policy.get_actions(np.concatenate(self.buffer[unit_type].share_obs[step]),
+                                                            np.concatenate(self.buffer[unit_type].obs[step]),
+                                                            np.concatenate(self.buffer[unit_type].rnn_states[step]),
+                                                            np.concatenate(self.buffer[unit_type].rnn_states_critic[step]),
+                                                            np.concatenate(self.buffer[unit_type].masks[step]),
+                                                            np.concatenate(self.buffer[unit_type].available_actions[step]))
             values.append(_t2n(value))
             actions.append(_t2n(action))
             action_log_probs.append(_t2n(action_log_prob))
             rnn_states.append(_t2n(rnn_state))
-            rnn_states_critic.append( _t2n(rnn_state_critic))
+            rnn_states_critics.append( _t2n(rnn_state_critic))
         # [self.envs, agents, dim]
-        values = np.concatenate(values, axis=1)
-        actions = np.concatenate(actions, axis=1)
-        action_log_probs = np.array(action_log_probs).transpose(1, 0, 2)
-        rnn_states = np.concatenate(rnn_states, axis=1)
-        rnn_states_critic = np.concatenate(rnn_states_critic, axis=1)
+        values = np.concatenate(values)
+        actions = np.concatenate(actions)
+        action_log_probs = np.concatenate(action_log_probs)
+        rnn_states = np.concatenate(rnn_states)
+        rnn_states_critics = np.concatenate(rnn_states_critics)
+        
+        values = np.array(np.split(values, self.n_rollout_threads))
+        actions = np.array(np.split(actions, self.n_rollout_threads))
+        action_log_probs = np.array(np.split(action_log_probs, self.n_rollout_threads))
+        rnn_states = np.array(np.split(rnn_states, self.n_rollout_threads))
+        rnn_states_critics = np.array(np.split(rnn_states_critics, self.n_rollout_threads))
 
-        return values, actions, action_log_probs, rnn_states, rnn_states_critic
+        return values, actions, action_log_probs, rnn_states, rnn_states_critics
 
     def insert(self, data):
         obs, share_obs, rewards, dones, infos, available_actions, \
@@ -171,7 +194,9 @@ class SMACRunner(Runner):
         dones_env = np.all(dones, axis=1)
 
         rnn_states[dones_env == True] = np.zeros(((dones_env == True).sum(), self.num_agents, self.recurrent_N, self.hidden_size), dtype=np.float32)
-        rnn_states_critic[dones == True] = np.zeros(((dones == True).sum(), self.recurrent_N, self.hidden_size), dtype=np.float32)
+        # rnn_states_critic[dones == True] = np.zeros(((dones == True).sum(), self.recurrent_N, self.hidden_size), dtype=np.float32)
+        rnn_states_critic[dones_env == True] = np.zeros(((dones_env == True).sum(
+        ), self.num_agents, *self.buffer[0].rnn_states_critic.shape[3:]), dtype=np.float32)
 
 
         masks = np.ones((self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
@@ -187,46 +212,49 @@ class SMACRunner(Runner):
         bad_masks = np.array([[[0.0] if info[agent_id]['bad_transition'] else [
                              1.0] for agent_id in range(self.num_agents)] for info in infos])
 
-        _obs = obs.copy()
-        _share_obs = share_obs.copy()
-        _rnn_states = rnn_states.copy()
-        _rnn_states_critic = rnn_states_critic.copy()
-        _actions = actions.copy()
-        _action_log_probs = action_log_probs.copy()
-        _values = values.copy()
-        _rewards = rewards.copy()
-        _masks = masks.copy()
-        _bad_masks = bad_masks.copy()
-        _active_masks = active_masks.copy()
-        _available_actions = available_actions.copy()
+        # _obs = obs.copy()
+        # _share_obs = share_obs.copy()
+        # _rnn_states = rnn_states.copy()
+        # _rnn_states_critic = rnn_states_critic.copy()
+        # _actions = actions.copy()
+        # _action_log_probs = action_log_probs.copy()
+        # _values = values.copy()
+        # _rewards = rewards.copy()
+        # _masks = masks.copy()
+        # _bad_masks = bad_masks.copy()
+        # _active_masks = active_masks.copy()
+        # _available_actions = available_actions.copy()
 
+        if not self.use_centralized_V:
+            share_obs = obs
+            
         bit = 0
         for count in self.type_count:
-            self.buffer[bit].insert(np.array(list(_share_obs[:, :count])), 
-                                    np.array(list(_obs[:, :count])), 
-                                    _rnn_states[:, :count], 
-                                    _rnn_states_critic[:, :count],
-                                    _actions[:, :count], 
-                                    _action_log_probs[:, bit],
-                                    _values[:, :count],
-                                    _rewards[:, :count],
-                                    _masks[:, :count],
-                                    _bad_masks[:, :count],
-                                    _active_masks[:, :count],
-                                    _available_actions[:, :count])
+            self.buffer[bit].insert(share_obs[:, :count], 
+                                    obs[:, :count], 
+                                    rnn_states[:, :count], 
+                                    rnn_states_critic[:, :count],
+                                    actions[:, :count], 
+                                    action_log_probs[:, :count],
+                                    values[:, :count],
+                                    rewards[:, :count],
+                                    masks[:, :count],
+                                    bad_masks[:, :count],
+                                    active_masks[:, :count],
+                                    available_actions[:, :count])
 
-            _share_obs = np.array(list(_share_obs[:, count:]))
-            _obs = np.array(list(_obs[:, count:]))
-            _rnn_states = _rnn_states[:, count:]
-            _rnn_states_critic = _rnn_states_critic[:, count:]
-            _actions = _actions[:, count:]
-            # _action_log_probs = _action_log_probs[:, count:]
-            _values = _values[:, count:]
-            _rewards = _rewards[:, count:]
-            _masks = _masks[:, count:]
-            _bad_masks = _bad_masks[:, count:]
-            _active_masks = _active_masks[:, count:]
-            _available_actions = _available_actions[:, count:]
+            share_obs = share_obs[:, count:]
+            obs = obs[:, count:]
+            rnn_states = rnn_states[:, count:]
+            rnn_states_critic = rnn_states_critic[:, count:]
+            actions = actions[:, count:]
+            action_log_probs = action_log_probs[:, count:]
+            values = values[:, count:]
+            rewards = rewards[:, count:]
+            masks = masks[:, count:]
+            bad_masks = bad_masks[:, count:]
+            active_masks = active_masks[:, count:]
+            available_actions = available_actions[:, count:]
 
             bit += 1
 
@@ -318,6 +346,6 @@ class SMACRunner(Runner):
                     self.writter.add_scalars(
                         "eval_win_rate", {"eval_win_rate": eval_win_rate}, total_num_steps)
                 break
-        print('\nSaving replay')
-        self.eval_envs.envs[0].save_replay()
-        print('Replay saved')
+        # print('\nSaving replay')
+        # self.eval_envs.envs[0].save_replay()
+        # print('Replay saved')

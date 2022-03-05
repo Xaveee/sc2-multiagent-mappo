@@ -122,10 +122,10 @@ class Runner(object):
     def compute(self):
         for unit_type in range(self.unit_type_bits):
             self.trainer[unit_type].prep_rollout()
-            next_value = self.trainer[unit_type].policy.get_values(self.buffer[unit_type].share_obs[-1], 
-                                                                self.buffer[unit_type].rnn_states_critic[-1],
-                                                                self.buffer[unit_type].masks[-1])
-            next_value = _t2n(next_value)
+            next_value = self.trainer[unit_type].policy.get_values(np.concatenate(self.buffer[unit_type].share_obs[-1]),
+                                                                   np.concatenate(self.buffer[unit_type].rnn_states_critic[-1]),
+                                                                   np.concatenate(self.buffer[unit_type].masks[-1]))
+            next_value = np.array(np.split(_t2n(next_value), self.n_rollout_threads))
             self.buffer[unit_type].compute_returns(next_value, self.trainer[unit_type].value_normalizer)
 
     def train(self):

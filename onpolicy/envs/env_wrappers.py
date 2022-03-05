@@ -7,7 +7,6 @@ from multiprocessing import Process, Pipe
 from abc import ABC, abstractmethod
 from onpolicy.utils.util import tile_images
 
-
 class CloudpickleWrapper(object):
     """
     Uses cloudpickle to serialize contents (otherwise multiprocessing tries to use pickle)
@@ -170,8 +169,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
             remote.close()
             break
         elif cmd == 'get_spaces':
-            remote.send(
-                (env.observation_space, env.share_observation_space, env.action_space))
+            remote.send((env.observation_space, env.share_observation_space, env.action_space))
         else:
             raise NotImplementedError
 
@@ -194,8 +192,7 @@ class GuardSubprocVecEnv(ShareVecEnv):
             remote.close()
 
         self.remotes[0].send(('get_spaces', None))
-        observation_space, share_observation_space, action_space = self.remotes[0].recv(
-        )
+        observation_space, share_observation_space, action_space = self.remotes[0].recv()
         ShareVecEnv.__init__(self, len(env_fns), observation_space,
                              share_observation_space, action_space)
 
@@ -253,8 +250,7 @@ class SubprocVecEnv(ShareVecEnv):
             remote.close()
 
         self.remotes[0].send(('get_spaces', None))
-        observation_space, share_observation_space, action_space = self.remotes[0].recv(
-        )
+        observation_space, share_observation_space, action_space = self.remotes[0].recv()
         ShareVecEnv.__init__(self, len(env_fns), observation_space,
                              share_observation_space, action_space)
 
@@ -274,6 +270,7 @@ class SubprocVecEnv(ShareVecEnv):
             remote.send(('reset', None))
         obs = [remote.recv() for remote in self.remotes]
         return np.stack(obs)
+
 
     def reset_task(self):
         for remote in self.remotes:
@@ -295,15 +292,12 @@ class SubprocVecEnv(ShareVecEnv):
     def render(self, mode="rgb_array"):
         for remote in self.remotes:
             remote.send(('render', mode))
-        if mode == "rgb_array":
+        if mode == "rgb_array":   
             frame = [remote.recv() for remote in self.remotes]
-            return np.stack(frame)
+            return np.stack(frame) 
 
 
-def shareworker(remote, parent_remote, env_fn_wrapper): 
-    """
-    env: StarCraft2_Env
-    """
+def shareworker(remote, parent_remote, env_fn_wrapper):
     parent_remote.close()
     env = env_fn_wrapper.x()
     while True:
@@ -344,7 +338,7 @@ def shareworker(remote, parent_remote, env_fn_wrapper):
             raise NotImplementedError
 
 
-class ShareSubprocVecEnv(ShareVecEnv): #Starcraft
+class ShareSubprocVecEnv(ShareVecEnv):
     def __init__(self, env_fns, spaces=None):
         """
         envs: list of gym environments to run in subprocesses
@@ -401,9 +395,6 @@ class ShareSubprocVecEnv(ShareVecEnv): #Starcraft
             p.join()
         self.closed = True
 
-    def save_replay(self):
-        self.remotes[0].send(('save_replay', None))
-
 
 def choosesimpleworker(remote, parent_remote, env_fn_wrapper):
     parent_remote.close()
@@ -453,8 +444,7 @@ class ChooseSimpleSubprocVecEnv(ShareVecEnv):
         for remote in self.work_remotes:
             remote.close()
         self.remotes[0].send(('get_spaces', None))
-        observation_space, share_observation_space, action_space = self.remotes[0].recv(
-        )
+        observation_space, share_observation_space, action_space = self.remotes[0].recv()
         ShareVecEnv.__init__(self, len(env_fns), observation_space,
                              share_observation_space, action_space)
 
@@ -478,7 +468,7 @@ class ChooseSimpleSubprocVecEnv(ShareVecEnv):
     def render(self, mode="rgb_array"):
         for remote in self.remotes:
             remote.send(('render', mode))
-        if mode == "rgb_array":
+        if mode == "rgb_array":   
             frame = [remote.recv() for remote in self.remotes]
             return np.stack(frame)
 
@@ -712,6 +702,7 @@ class DummyVecEnv(ShareVecEnv):
             raise NotImplementedError
 
 
+
 class ShareDummyVecEnv(ShareVecEnv):
     def __init__(self, env_fns):
         self.envs = [fn() for fn in env_fns]
@@ -747,7 +738,7 @@ class ShareDummyVecEnv(ShareVecEnv):
     def close(self):
         for env in self.envs:
             env.close()
-
+    
     def render(self, mode="human"):
         if mode == "rgb_array":
             return np.array([env.render(mode=mode) for env in self.envs])
@@ -795,7 +786,6 @@ class ChooseDummyVecEnv(ShareVecEnv):
         else:
             raise NotImplementedError
 
-
 class ChooseSimpleDummyVecEnv(ShareVecEnv):
     def __init__(self, env_fns):
         self.envs = [fn() for fn in env_fns]
@@ -815,7 +805,7 @@ class ChooseSimpleDummyVecEnv(ShareVecEnv):
 
     def reset(self, reset_choose):
         obs = [env.reset(choose)
-               for (env, choose) in zip(self.envs, reset_choose)]
+                   for (env, choose) in zip(self.envs, reset_choose)]
         return np.array(obs)
 
     def close(self):

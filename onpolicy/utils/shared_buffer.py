@@ -66,7 +66,7 @@ class SharedReplayBuffer(object):
         self.actions = np.zeros(
             (self.episode_length, self.n_rollout_threads, num_agents, act_shape), dtype=np.float32)
         self.action_log_probs = np.zeros(
-            (self.episode_length, self.n_rollout_threads, act_shape), dtype=np.float32)
+            (self.episode_length, self.n_rollout_threads, num_agents, act_shape), dtype=np.float32)
         self.rewards = np.zeros(
             (self.episode_length, self.n_rollout_threads, num_agents, 1), dtype=np.float32)
 
@@ -231,7 +231,7 @@ class SharedReplayBuffer(object):
         :param mini_batch_size: (int) number of samples in each minibatch.
         """
         episode_length, n_rollout_threads, num_agents = self.rewards.shape[0:3]
-        batch_size = n_rollout_threads * episode_length
+        batch_size = n_rollout_threads * episode_length * num_agents
 
         if mini_batch_size is None:
             assert batch_size >= num_mini_batch, (
