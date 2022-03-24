@@ -15,3 +15,5 @@ logs
 .nfs*
 *.so
 venv
+/onpolicy/scripts/train_smac_separated.sh
+/replays
