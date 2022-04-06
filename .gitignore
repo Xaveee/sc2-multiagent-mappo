@@ -16,4 +16,5 @@ logs
 *.so
 venv
 /replays
-onpolicy/scripts/train_smac_separated.sh
+nohup.out
+*.sh

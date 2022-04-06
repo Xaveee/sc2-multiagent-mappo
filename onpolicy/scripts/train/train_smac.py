@@ -118,7 +118,7 @@ def main(args):
                          entity=all_args.user_name,
                          notes=socket.gethostname(),
                          name=str(all_args.experiment_name),
-                         group=all_args.map_name,
+                         group='3s5z_sample',
                          dir=str(run_dir),
                          job_type="training",
                          reinit=True)

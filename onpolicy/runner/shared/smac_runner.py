@@ -107,9 +107,9 @@ class SMACRunner(Runner):
             # eval
             if episode % self.eval_interval == 0 and self.use_eval:
                 self.eval(total_num_steps)
-        print("saving")
-        self.envs.envs[0].save_replay()
-        print("saved")
+        # print("saving")
+        # self.envs.envs[0].save_replay()
+        # print("saved")
 
     def warmup(self):
         # reset env
@@ -251,6 +251,6 @@ class SMACRunner(Runner):
                         "eval_win_rate", {"eval_win_rate": eval_win_rate}, total_num_steps)
                 break
 
-        # print("saving eval replay")
-        # self.eval_envs.qqq
-        # print("saved")
+        print("saving eval replay")
+        self.eval_envs.envs[0].save_replay()
+        print("saved")
