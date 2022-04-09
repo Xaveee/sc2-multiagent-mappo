@@ -103,8 +103,10 @@ class SMACRunner(Runner):
                     if self.use_wandb:
                         wandb.log({"incre_win_rate": incre_win_rate},
                                   step=total_num_steps)
-                        wandb.log({"incre_draw_rate": incre_win_rate},
-                                  step=total_num_steps)
+                        # wandb.log({"incre_draw_rate": incre_win_rate},
+                        #           step=total_num_steps)
+                        wandb.log({"average_step_rewards": np.mean(self.buffer[0].rewards)}, step=total_num_steps)
+
                     else:
                         self.writter.add_scalars(
                             "incre_win_rate", {"incre_win_rate": incre_win_rate}, total_num_steps)
@@ -160,30 +162,36 @@ class SMACRunner(Runner):
         
         for unit_type in range(self.unit_type_bits):
             self.trainer[unit_type].prep_rollout()
-            value, action, action_log_prob, rnn_state, rnn_state_critic \
+            value, action, action_log_prob, rnn_state, rnn_states_critic \
                 = self.trainer[unit_type].policy.get_actions(np.concatenate(self.buffer[unit_type].share_obs[step]),
                                                             np.concatenate(self.buffer[unit_type].obs[step]),
                                                             np.concatenate(self.buffer[unit_type].rnn_states[step]),
                                                             np.concatenate(self.buffer[unit_type].rnn_states_critic[step]),
                                                             np.concatenate(self.buffer[unit_type].masks[step]),
                                                             np.concatenate(self.buffer[unit_type].available_actions[step]))
-            values.append(_t2n(value))
-            actions.append(_t2n(action))
-            action_log_probs.append(_t2n(action_log_prob))
-            rnn_states.append(_t2n(rnn_state))
-            rnn_states_critics.append( _t2n(rnn_state_critic))
+            value = np.array(np.split(_t2n(value), self.n_rollout_threads))
+            action = np.array(np.split(_t2n(action), self.n_rollout_threads))
+            action_log_prob = np.array(np.split(_t2n(action_log_prob), self.n_rollout_threads))
+            rnn_state = np.array(np.split(_t2n(rnn_state), self.n_rollout_threads))
+            rnn_states_critic = np.array(np.split(_t2n(rnn_states_critic), self.n_rollout_threads))
+            
+            values.append(value)
+            actions.append(action)
+            action_log_probs.append(action_log_prob)
+            rnn_states.append(rnn_state)
+            rnn_states_critics.append(rnn_states_critic)
         # [self.envs, agents, dim]
-        values = np.concatenate(values)
-        actions = np.concatenate(actions)
-        action_log_probs = np.concatenate(action_log_probs)
-        rnn_states = np.concatenate(rnn_states)
-        rnn_states_critics = np.concatenate(rnn_states_critics)
+        values = np.concatenate(values,1)
+        actions = np.concatenate(actions,1)
+        action_log_probs = np.concatenate(action_log_probs,1)
+        rnn_states = np.concatenate(rnn_states,1)
+        rnn_states_critics = np.concatenate(rnn_states_critics,1)
         
-        values = np.array(np.split(values, self.n_rollout_threads))
-        actions = np.array(np.split(actions, self.n_rollout_threads))
-        action_log_probs = np.array(np.split(action_log_probs, self.n_rollout_threads))
-        rnn_states = np.array(np.split(rnn_states, self.n_rollout_threads))
-        rnn_states_critics = np.array(np.split(rnn_states_critics, self.n_rollout_threads))
+        # values = np.array(np.split(values, self.n_rollout_threads))
+        # actions = np.array(np.split(actions, self.n_rollout_threads))
+        # action_log_probs = np.array(np.split(action_log_probs, self.n_rollout_threads))
+        # rnn_states = np.array(np.split(rnn_states, self.n_rollout_threads))
+        # rnn_states_critics = np.array(np.split(rnn_states_critics, self.n_rollout_threads))
 
         return values, actions, action_log_probs, rnn_states, rnn_states_critics
 
@@ -346,6 +354,6 @@ class SMACRunner(Runner):
                     self.writter.add_scalars(
                         "eval_win_rate", {"eval_win_rate": eval_win_rate}, total_num_steps)
                 break
-        # print('\nSaving replay')
-        # self.eval_envs.envs[0].save_replay()
-        # print('Replay saved')
+        print('\nSaving replay')
+        self.eval_envs.envs[0].save_replay()    
+        print('Replay saved')

@@ -26,14 +26,14 @@
 env="StarCraft2"
 map="3s5z"
 algo="mappo"
-exp="8_multitype_linear_lr_0.001"
+exp="3s5z_multitype_0406"
 user_name="xavee"
-seed_max=1
+seed_max=11
 n_rollout_threads=20
 
 echo "env is ${env}, map is ${map}, algo is ${algo}, exp is ${exp}, max seed is ${seed_max}"
-for seed in `seq ${seed_max}`;
+for seed in `seq 2 ${seed_max}`;
 do
     echo "seed is ${seed}:"
-    CUDA_VISIBLE_DEVICES=1 python train/train_smac.py --user_name ${user_name} --env_name ${env} --algorithm_name ${algo} --experiment_name ${exp} --map_name ${map} --seed ${seed} --n_training_threads 127 --n_rollout_threads ${n_rollout_threads} --num_mini_batch 1 --episode_length 400 --num_env_steps 20000000 --ppo_epoch 5 --use_value_active_masks --use_eval --use_recurrent_policy true --share_policy --lr 0.001 --critic_lr 0.001 --use_linear_lr_decay true --use_wandb
+    CUDA_VISIBLE_DEVICES=1 python train/train_smac.py --user_name ${user_name} --env_name ${env} --algorithm_name ${algo} --experiment_name ${exp} --map_name ${map} --seed ${seed} --n_training_threads 127 --n_rollout_threads ${n_rollout_threads} --num_mini_batch 1 --episode_length 400 --num_env_steps 11000000 --ppo_epoch 5 --use_value_active_masks --use_eval --use_recurrent_policy --share_policy
 done
