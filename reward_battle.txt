@@ -1,0 +1,72 @@
+ORIGINAL
+reward_sparse=False,
+reward_only_positive=True,
+reward_death_value=10,
+reward_win=200,
+reward_defeat=0,
+reward_negative_scale=0.5,
+reward_scale=True,
+reward_scale_rate=20,
+def reward_battle(self):
+        """Reward function when self.reward_spare==False.
+        Returns accumulative hit/shield point damage dealt to the enemy
+        + reward_death_value per enemy unit killed, and, in case
+        self.reward_only_positive == False, - (damage dealt to ally units
+        + reward_death_value per ally unit killed) * self.reward_negative_scale
+        """
+        if self.reward_sparse:
+            return 0
+
+        reward = 0
+        delta_deaths = 0
+        delta_ally = 0
+        delta_enemy = 0
+
+        neg_scale = self.reward_negative_scale
+
+        # update deaths
+        for al_id, al_unit in self.agents.items():
+            if not self.death_tracker_ally[al_id]:
+                # did not die so far
+                prev_health = (
+                    self.previous_ally_units[al_id].health
+                    + self.previous_ally_units[al_id].shield
+                )
+                if al_unit.health == 0:
+                    # just died
+                    self.death_tracker_ally[al_id] = 1
+                    if not self.reward_only_positive:
+                        delta_deaths -= self.reward_death_value * neg_scale
+                    delta_ally += prev_health * neg_scale
+                else:
+                    # still alive
+                    delta_ally += neg_scale * (
+                        prev_health - al_unit.health - al_unit.shield
+                    )
+
+        for e_id, e_unit in self.enemies.items():
+            if not self.death_tracker_enemy[e_id]:
+                prev_health = (
+                    self.previous_enemy_units[e_id].health
+                    + self.previous_enemy_units[e_id].shield
+                )
+                if e_unit.health == 0:
+                    self.death_tracker_enemy[e_id] = 1
+                    delta_deaths += self.reward_death_value
+                    delta_enemy += prev_health
+                else:
+                    delta_enemy += prev_health - e_unit.health - e_unit.shield
+
+        if self.reward_only_positive:
+            reward = abs(delta_enemy + delta_deaths)  # shield regeneration
+        else:
+            reward = delta_enemy + delta_deaths - delta_ally
+
+        return reward
+
+Experiment 2: 04/9
+
+Ignore trying to win, prioritized on dealing damage
+reward_only_positive True -> False
+reward_death_value 10 -> 50
+reward_win 200 -> 10

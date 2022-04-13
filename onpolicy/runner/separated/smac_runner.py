@@ -119,7 +119,7 @@ class SMACRunner(Runner):
                 for unit_type in range(self.unit_type_bits):
                     train_infos[unit_type].update(
                         {'dead_ratio': 1 - self.buffer[unit_type].active_masks.sum() / reduce(lambda x, y: x*y, list(self.buffer[unit_type].active_masks.shape))})
-                    train_infos[unit_type].update({'average_step_rewards': np.mean(self.buffer[unit_type].rewards)})
+                    # train_infos[unit_type].update({'average_step_rewards': np.mean(self.buffer[unit_type].rewards)})
                 self.log_train(train_infos, total_num_steps)
 
             # eval
