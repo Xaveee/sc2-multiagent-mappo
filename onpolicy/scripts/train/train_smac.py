@@ -19,7 +19,8 @@ def make_train_env(all_args):
     def get_env_fn(rank):
         def init_env():
             if all_args.env_name == "StarCraft2":
-                env = StarCraft2Env(all_args)
+                env = StarCraft2Env(all_args,
+                replay_dir = '/home/huy/code/sc2-multiagent-mappo/replays')
             else:
                 print("Can not support the " +
                       all_args.env_name + "environment.")
@@ -39,7 +40,8 @@ def make_eval_env(all_args):
     def get_env_fn(rank):
         def init_env():
             if all_args.env_name == "StarCraft2":
-                env = StarCraft2Env(all_args)
+                env = StarCraft2Env(all_args,
+                replay_dir = '/home/huy/code/sc2-multiagent-mappo/replays')
             else:
                 print("Can not support the " +
                       all_args.env_name + "environment.")
@@ -75,6 +77,7 @@ def parse_args(args, parser):
                         action='store_false', default=True)
     parser.add_argument("--use_mustalive", action='store_false', default=True)
     parser.add_argument("--add_center_xy", action='store_false', default=True)
+    parser.add_argument("--scenario_type", type=str,help='choose which scenario to run')
 
     all_args = parser.parse_known_args(args)[0]
 
@@ -118,7 +121,7 @@ def main(args):
                          entity=all_args.user_name,
                          notes=socket.gethostname(),
                          name=str(all_args.experiment_name),
-                         group='3s5z_sample',
+                         group=all_args.map_name,
                          dir=str(run_dir),
                          job_type="training",
                          reinit=True)
@@ -149,20 +152,24 @@ def main(args):
     envs = make_train_env(all_args)
     eval_envs = make_eval_env(all_args) if all_args.use_eval else None
     num_agents = get_map_params(all_args.map_name)["n_agents"]
+    unit_type_bits = get_map_params(all_args.map_name)["unit_type_bits"]
 
     config = {
         "all_args": all_args,
         "envs": envs,
         "eval_envs": eval_envs,
         "num_agents": num_agents,
+        "unit_type_bits": unit_type_bits,
         "device": device,
         "run_dir": run_dir
     }
 
     # run experiments
-    if all_args.share_policy:
+    if all_args.scenario_type == 'centralized':
         from onpolicy.runner.shared.smac_runner import SMACRunner as Runner
-    else:
+    elif all_args.scenario_type == 'multitype':
+        from onpolicy.runner.separated.smac_runner_multitype import SMACRunner as Runner
+    if all_args.scenario_type == 'multiagent':
         from onpolicy.runner.separated.smac_runner import SMACRunner as Runner
 
     runner = Runner(config)
